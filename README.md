@@ -20,20 +20,13 @@
 
 ## ✨ Why Choose React Media Optimizer?
 
-  
-
 | Feature | Benefit | Impact |
-
 |---------|---------|--------|
-
 | **Auto Lazy Loading** | Images/videos load only when visible | ⬇️ 50-80% initial page weight |
-
+| **Auto Blur Placeholders** | Smooth fade-in from blurred preview to sharp image | ⬆️ Better perceived load speed & premium UX |
 | **WebP/WebM Conversion** | Modern formats with better compression | ⬇️ 25-35% smaller file sizes |
-
 | **Client-side Compression** | Reduce upload sizes before server | ⬇️ 60-80% upload bandwidth |
-
 | **SSR/SSG Safe** | Works with Next.js, Gatsby, Remix | ✅ Zero hydration errors |
-
 | **Zero Configuration** | Sensible defaults out of the box | ⏱️ 5-minute integration |
 
   

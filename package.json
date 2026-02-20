@@ -1,6 +1,6 @@
 {
   "name": "react-media-optimizer",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Drop-in React component for auto-optimized images & media with lazy loading, WebP conversion, and performance optimization",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
