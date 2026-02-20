@@ -1,3 +1,4 @@
+//hooks/useOtimization.ts
 import { useState, useEffect, useRef } from 'react';
 import { useLazyLoad } from './useLazyLoad';
 import { supportsWebP, convertToWebP } from '../utils/webpConverter';

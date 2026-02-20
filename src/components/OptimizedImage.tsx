@@ -7,7 +7,9 @@ interface OptimizedImageProps
   lazy?: boolean;
   webp?: boolean;
   quality?: number;
-  placeholderSrc?: string;
+  placeholderSrc?: string; // legacy support
+  placeholder?: 'blur' | 'none';
+  blurIntensity?: number;
   fallbackSrc?: string;
   showLoadingIndicator?: boolean;
 }
@@ -18,11 +20,13 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   webp = true,
   quality = 80,
   placeholderSrc,
+  placeholder = 'none',
+  blurIntensity = 20,
   fallbackSrc,
   showLoadingIndicator = true,
   className = '',
   alt,
-  onLoad,   
+  onLoad,
   onError,
   ...imgProps
 }) => {
@@ -37,13 +41,6 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     webp,
     quality,
     fallbackSrc,
-    // 👇 internal lifecycle hooks (NOT React events)
-    onOptimizedLoad: () => {
-      // optional: internal tracking / analytics
-    },
-    onOptimizedError: () => {
-      // optional: internal error handling
-    },
   });
 
   const resolvedAlt =
@@ -51,20 +48,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     src.split('/').pop()?.replace(/[-_]/g, ' ') ||
     'image';
 
-  /* ---------------- Loading / Placeholder ---------------- */
-
-  if (isLoading && showLoadingIndicator && placeholderSrc) {
-    return (
-      <img
-        ref={elementRef}
-        src={placeholderSrc}
-        alt={`Loading ${resolvedAlt}`}
-        className={`${className} media-optimizer-loading`}
-        aria-busy="true"
-        {...imgProps}
-      />
-    );
-  }
+  const showBlur = placeholder === 'blur';
 
   /* ---------------- Error fallback ---------------- */
 
@@ -82,36 +66,89 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     );
   }
 
-  /* ---------------- Optimized image ---------------- */
+  /* ---------------- Layered Rendering ---------------- */
 
   return (
-    <img
-      ref={elementRef}
-      src={optimizedSrc}
-      alt={resolvedAlt}
-      className={`${className} media-optimizer-loaded`}
-      loading={lazy ? undefined : 'eager'}
-      decoding="async"
-      onLoad={onLoad}     // React DOM event
-      onError={onError}   // React DOM event
-      {...imgProps}
-    />
+    <div
+      className="media-optimizer-wrapper"
+      style={{ position: 'relative', overflow: 'hidden' }}
+    >
+      {/* Blur Layer (Auto Blur) */}
+      {showBlur && (
+        <img
+          src={optimizedSrc}
+          alt=""
+          aria-hidden="true"
+          className="media-optimizer-blur-layer"
+          style={{
+            filter: `blur(${blurIntensity}px)`,
+            transform: 'scale(1.05)',
+          }}
+        />
+      )}
+
+      {/* Legacy Placeholder Support */}
+      {isLoading && placeholderSrc && (
+        <img
+          src={placeholderSrc}
+          alt=""
+          aria-hidden="true"
+          className="media-optimizer-placeholder-layer"
+        />
+      )}
+
+      {/* Final Optimized Image */}
+      <img
+        ref={elementRef}
+        src={optimizedSrc}
+        alt={resolvedAlt}
+        className={`media-optimizer-final-layer ${
+          isLoading ? 'loading' : 'loaded'
+        } ${className}`}
+        loading={lazy ? undefined : 'eager'}
+        decoding="async"
+        onLoad={onLoad}
+        onError={onError}
+        {...imgProps}
+      />
+    </div>
   );
 };
 
-/* ---------------- Optional default styles ---------------- */
+/* ---------------- Default Styles ---------------- */
 
 export const OptimizedImageStyles = `
-.media-optimizer-loading {
-  opacity: 0.6;
+.media-optimizer-wrapper {
+  display: inline-block;
 }
 
-.media-optimizer-loaded {
-  animation: fadeIn 0.4s ease;
+.media-optimizer-wrapper img {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0.6; }
-  to { opacity: 1; }
+.media-optimizer-blur-layer,
+.media-optimizer-placeholder-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transition: opacity 300ms ease;
+}
+
+.media-optimizer-final-layer {
+  position: relative;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.media-optimizer-final-layer.loaded {
+  opacity: 1;
+}
+
+.media-optimizer-final-layer.loaded ~ .media-optimizer-blur-layer,
+.media-optimizer-final-layer.loaded ~ .media-optimizer-placeholder-layer {
+  opacity: 0;
 }
 `;

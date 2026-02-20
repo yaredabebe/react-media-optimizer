@@ -12,8 +12,7 @@
   
 
 > 📊 **Average improvements:** 60% faster LCP, 75% smaller images, 40% better SEO scores
-
-  
+  *Results vary depending on implementation and infrastructure.*
 
 ---
 
@@ -111,13 +110,15 @@ width={1920}
 
 height={1080}
 
+placeholder="blur"  
+    
+blurIntensity={25}        // OPTIONAL
+
 lazy={true}
 
 webp={true}
 
 quality={85}
-
-placeholderSrc="/blur-placeholder.jpg"
 
 className="rounded-lg shadow-xl"
 
@@ -394,7 +395,8 @@ const  optimizedUrl = webpSupported
 : imageUrl;
 
 ```
-
+### Why Use Blur Placeholders?
+* Blurred previews fade into the final image, improving perceived load time and making your site feel premium. Perfect for social media demos or e-commerce hero images. *
 ## 📊 Performance Impact
 
 Before & After Comparison:
@@ -644,19 +646,14 @@ debug={true}  // Logs optimization steps
 ### From standard <img> tags
 
 ```diff
-
-- <img src="/image.jpg" alt="Example" />
-
+- <img src="/hero.jpg" alt="Example" />
 + <OptimizedImage
-
-+ src="/image.jpg"
-
-+ alt="Example"
-
-+ width={800}
-
-+ height={600}
-
++   src="/hero.jpg"
++   alt="Example"
++   placeholder="blur"
++   blurIntensity={20}
++   width={800}
++   height={600}
 + />
 
 ```
@@ -679,8 +676,6 @@ debug={true}  // Logs optimization steps
 
 ## ✨ Features
 
-  
-
 - ✅ Image & video lazy loading
 
 - ✅ Client-side compression
@@ -691,7 +686,22 @@ debug={true}  // Logs optimization steps
 
 - ✅ TypeScript support
 
-  
+- ✅ Auto blur placeholders for smooth image transitions
+
+- ✅ Fully backward-compatible with placeholderSrc
+
+- ✅ Smooth fade-in animation
+
+- ✅ Works with lazy-loading & SSR
+
+## 📦 Changelog
+
+### v2.0.0
+- Added auto blur placeholder (`placeholder="blur"`)
+- Added `blurIntensity` prop
+- Improved fade transition for all images
+- Backward compatible with `placeholderSrc`
+
 
 ## 📄 License
 
