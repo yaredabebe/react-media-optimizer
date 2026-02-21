@@ -231,22 +231,15 @@ playsInline
 |------|------|---------|-------------|
 
 | **src** | `string` | **Required** | Image source URL |
-
 | **alt** | `string` | `""` | Accessibility description |
-
 | **lazy** | `boolean` | `true` | Enable lazy loading |
-
 | **webp** | `boolean` | `true` | Convert to WebP when supported |
-
 | **quality** | `number` | `85` | Image quality (1-100) |
-
 | **placeholderSrc** | `string` | `undefined` | Loading placeholder image |
-
 | **fallbackSrc** | `string` | `undefined` | Fallback on error |
-
 | **showLoadingIndicator** | `boolean` | `true` | Visual loading state |
-
-  
+| **placeholder** | `"blur" \| string` | `undefined` | Use auto blur or custom placeholder |
+| **blurIntensity** | `number` | `20` | Blur strength when using `placeholder="blur"` | 
 
 ### `useOptimizedImage()` Hook
 

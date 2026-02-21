@@ -1,6 +1,6 @@
 {
   "name": "react-media-optimizer",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "description": "Drop-in React component for auto-optimized images & media with lazy loading, WebP conversion, and performance optimization",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
@@ -13,11 +13,10 @@
   "exports": {
     ".": {
       "import": "./dist/index.esm.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     }
   },
- "sideEffects": false,
+  "sideEffects": false,
   "scripts": {
     "dev": "vite",
     "build": "tsup src/index.ts --format cjs,esm --dts --external react,react-dom",
@@ -26,7 +25,7 @@
     "test": "vitest",
     "lint": "eslint src --ext ts,tsx"
   },
-   "keywords": [
+  "keywords": [
     "react",
     "image",
     "optimization",
@@ -55,10 +54,6 @@
     "url": "https://github.com/yaredabebe/react-media-optimizer/issues"
   },
   "homepage": "https://github.com/yaredabebe/react-media-optimizer#readme",
-  "dependencies": {
-    "react": ">=16.8.0",
-    "react-dom": ">=16.8.0"
-  },
   "devDependencies": {
     "@types/node": "^25.0.9",
     "@types/react": "^19.2.8",
