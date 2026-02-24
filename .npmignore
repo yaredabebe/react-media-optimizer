@@ -1,0 +1,13 @@
+# Source files (exclude these)
+src/
+examples/
+test/
+test-app/
+**/*.test.ts
+**/*.test.tsx
+tsconfig.json
+tsup.config.ts
+vite.config.ts
+
+# But DO NOT exclude dist - we want it included!
+# DO NOT add dist/ here

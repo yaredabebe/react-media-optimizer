@@ -8,6 +8,11 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   external: ['react', 'react-dom'],
+ outExtension({ format }) {
+    return {
+      js: format === 'cjs' ? '.js' : '.mjs',
+    };
+  },
   esbuildOptions(options) {
     options.banner = {
       js: '"use client";',
