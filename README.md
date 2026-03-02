@@ -1,6 +1,6 @@
 # 🚀 React Media Optimizer
 [![npm version](https://img.shields.io/npm/v/react-media-optimizer.svg)](https://www.npmjs.com/package/react-media-optimizer)[![npm downloads](https://img.shields.io/npm/dm/react-media-optimizer.svg)](https://npmjs.com/package/react-media-optimizer)[![bundle size](https://img.shields.io/bundlephobia/minzip/react-media-optimizer)](https://bundlephobia.com/package/react-media-optimizer)[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
-[![SEO Ready](https://img.shields.io/badge/SEO-v1.1.0beta-green.svg)](#-seo-features-v110-beta)
+[![SEO Ready](https://img.shields.io/badge/SEO-v1.1.0-green.svg)](#-seo-features-v110)
 **Drop-in image & video optimization for React applications.** Automatically compress, lazy-load, convert media, AND inject SEO metadata to improve performance, UX, and search rankings with minimal effort.
 > 📊 **Average improvements:** 60% faster LCP, 75% smaller images, 40% better SEO scores, +25% Google Image CTR
 *Results vary depending on implementation and infrastructure.*
@@ -16,7 +16,7 @@
 | **Zero Configuration** | Sensible defaults out of the box | ⏱️ 5-minute integration |
 | **SEO Features** | Automatic JSON-LD schema injection | ⬆️ +25% Google Image CTR |
 ---
-## 🎯 **v1.1.0-beta: The SEO Update**
+## 🎯 **v1.1.0: The SEO Update**
 ### 🔔 **New SEO Features for Images:**
 - **Google "Licensable" Badge** - Automatically adds license metadata
 - **ImageObject Schema** - Rich snippets in Google Search
@@ -374,7 +374,7 @@ const VideoPage = () => (
 ```
 ## 🔄 Migration Guide
 
-### From v1.0.x to v1.1.0-beta
+### From v1.0.x to v1.1.0
 
 ```diff
 <OptimizedImage
@@ -423,7 +423,7 @@ type LicenseType =
 ```
 ## 📦 Changelog
 
-### v1.1.0-beta (Latest) 🎉
+### v1.1.0 (Latest) 🎉
 
 -   ✨ **SEO Features**: Automatic JSON-LD schema injection
     
@@ -476,7 +476,7 @@ If you find this package helpful, please consider:
 ## 🎯 **Key Updates Made:**
 
 1. **SEO Features Highlight** - New badge and section
-2. **v1.1.0-beta Tag** - Clear version indication
+2. **v1.1.0 Tag** - Clear version indication
 3. **Image SEO Props** - License, author, credit, etc.
 4. **Video SEO Props** - Chapters, duration, transcript
 5. **Key Moments Examples** - Google video chapters
