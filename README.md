@@ -89,9 +89,6 @@ pnpm  add  react-media-optimizer
 ### 1. Optimized Image with SEO
 
   
-
-  
-
 ```jsx
 
 import { OptimizedImage } from 'react-media-optimizer';
@@ -103,6 +100,7 @@ function HeroSection() {
       alt="Product showcase"
       width={1920}
       height={1080}
+      
       // Performance props
       placeholder="blur"
       blurIntensity={25}
@@ -112,14 +110,14 @@ function HeroSection() {
       priority="hero"  // Preloads + representativeOfPage
       className="rounded-lg shadow-xl"
       
-      // SEO props 
+      // SEO props
       license="CC BY-SA 4.0"        // Google "Licensable" badge
       author="John Doe Photography" // E-E-AT signal
       credit="Shot on Sony A7III"   // Photographer credit
-      caption="Sunset over mountains" // Image description
-      keywords={["nature", "sunset", "mountains"]}
-      contentLocation="Swiss Alps"
-      copyrightHolder="Nature Inc"
+      caption="Sunset over mountains with beautiful colors" // Image description
+      keywords={["nature", "sunset", "mountains", "landscape"]}
+      contentLocation="Swiss Alps, Switzerland"
+      copyrightHolder="Nature Photography Inc"
       datePublished="2024-01-15"
     />
   );
@@ -130,51 +128,103 @@ function HeroSection() {
   ### **2. Optimized Video with Key Moments **
 
 ```jsx
-
 import { OptimizedVideo } from 'react-media-optimizer';
+
 function TutorialVideo() {
- return (
- <OptimizedVideo
- src="https://example.com/tutorial.mp4"
- poster="/thumbnail.jpg"
- width="100%"
- height="auto"
-  
- // Performance props
- lazy={true}
- webm={true}
- mp4={true}
- controls
- priority="critical"
-  
- // Video SEO with Key Moments
- title="Complete React Tutorial"
- description="Learn React from scratch in 1 hour"
- author="React Academy"
- license="Royalty Free"
- duration={3600} // 1 hour in seconds
- uploadDate="2024-01-15"
- isFamilyFriendly={true}
- keywords={["react", "tutorial", "javascript"]}
- transcript="Full video transcript here..."
- chapters={[
- { startTime: 0, title: "Introduction" },
- { startTime: 300, title: "Installation" },
- { startTime: 900, title: "Components" },
- { startTime: 1800, title: "Hooks Deep Dive" },
- { startTime: 2700, title: "Conclusion" }
- ]}
- showChapters={true} // Show clickable chapters overlay
- />
- );
+  // Define chapters for Key Moments
+  const chapters = [
+    { startTime: 0, title: "Introduction" },
+    { startTime: 300, title: "Installation" },
+    { startTime: 900, title: "Components" },
+    { startTime: 1800, title: "Hooks Deep Dive" },
+    { startTime: 2700, title: "Conclusion" }
+  ];
+
+  return (
+    <OptimizedVideo
+      src="https://example.com/tutorial.mp4"
+      poster="/thumbnail.jpg"
+      width="100%"
+      height="auto"
+      
+      // Performance props
+      lazy={true}
+      webm={true}
+      mp4={true}
+      controls
+      priority="critical"
+      
+      // Video SEO with Key Moments
+      title="Complete React Tutorial 2024"
+      description="Learn React from scratch in 1 hour - Hooks, Components, State Management"
+      author="React Academy"
+      license="Royalty Free"
+      duration={3600} // 1 hour in seconds
+      uploadDate="2024-01-15"
+      isFamilyFriendly={true}
+      keywords={["react", "tutorial", "javascript", "frontend", "web development"]}
+      transcript="Full video transcript available for accessibility and SEO..."
+      chapters={chapters}  // Google Key Moments!
+      showChapters={true}   // Show clickable chapters overlay
+    />
+  );
 }
 
 ```
+### ** 3. Manual Schema Injection Example **
 
+```jsx
+import { 
+  generateImageSchema, 
+  generateVideoSchema,
+  injectJsonLd 
+} from 'react-media-optimizer';
 
+// Manual image schema injection
+const imageSchema = generateImageSchema({
+  url: "https://example.com/image.jpg",
+  alt: "Beautiful landscape",
+  license: "CC BY-SA 4.0",
+  author: "John Doe",
+  caption: "Mountain landscape at sunset",
+  keywords: ["mountains", "sunset", "nature"],
+  isRepresentative: true
+});
+
+injectJsonLd(imageSchema);
+
+// Manual video schema with chapters
+const videoSchema = generateVideoSchema({
+  url: "https://example.com/video.mp4",
+  name: "Tutorial Video",
+  description: "Complete guide",
+  duration: 600,
+  uploadDate: "2024-01-15",
+  chapters: [
+    { startTime: 0, title: "Intro" },
+    { startTime: 120, title: "Main Content" }
+  ]
+});
+
+injectJsonLd(videoSchema);
+
+```
+### ** 4. Priority Preload Example **
+```jsx
+import { preloadCritical } from 'react-media-optimizer';
+
+// Preload critical images/videos on page load
+useEffect(() => {
+  preloadCritical([
+    { src: '/hero.jpg', type: 'image' },
+    { src: '/intro.mp4', type: 'video' },
+    { src: '/logo.png', type: 'image' }
+  ]);
+}, []);
+```
 ---
 
-### **## 📖 API Reference v1.1.0-beta**
+### **## 📖 API Reference v1.1.0**
 ---
 
 ## `<OptimizedImage />` Props

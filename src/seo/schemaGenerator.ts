@@ -1,6 +1,6 @@
 // src/seo/schemaGenerator.ts
 import { SEOProps } from '../types';
-import { VideoChapter } from '../components/OptimizedVideo';
+import { VideoChapter } from '../types';  // Import from types only (not from components)
 
 export interface ImageSchemaOptions extends SEOProps {
   url: string;
@@ -19,7 +19,7 @@ export interface VideoSchemaOptions {
   uploadDate: string;
   author?: string;
   license?: string;
-  chapters?: VideoChapter[];
+  chapters?: VideoChapter[];  // Using imported type
   isFamilyFriendly?: boolean;
   keywords?: string[];
   transcript?: string;
@@ -45,7 +45,7 @@ export function generateImageSchema(options: ImageSchemaOptions): Record<string,
     schema['description'] = options.alt;
   }
 
-  // Add license for "Licensable" badge (CRITICAL for Google Images)
+  // Add license for "Licensable" badge
   if (options.license) {
     schema['license'] = getLicenseUrl(options.license);
   }
@@ -97,7 +97,7 @@ export function generateImageSchema(options: ImageSchemaOptions): Record<string,
     schema['datePublished'] = options.datePublished;
   }
 
-  // Mark as representative of page for hero images (SEO boost)
+  // Mark as representative of page for hero images
   if (options.isRepresentative) {
     schema['representativeOfPage'] = true;
   }
@@ -119,12 +119,12 @@ export function generateVideoSchema(options: VideoSchemaOptions): Record<string,
     'contentUrl': options.url,
   };
 
-  // Add duration (format: PT1H30M15S) - Important for rich snippets
+  // Add duration
   if (options.duration) {
     schema['duration'] = formatDuration(options.duration);
   }
 
-  // Add author for E-E-AT
+  // Add author
   if (options.author) {
     schema['author'] = {
       '@type': 'Person',
@@ -147,7 +147,7 @@ export function generateVideoSchema(options: VideoSchemaOptions): Record<string,
     schema['keywords'] = options.keywords.join(', ');
   }
 
-  // Add transcript (accessibility + SEO)
+  // Add transcript
   if (options.transcript) {
     schema['transcript'] = options.transcript;
   }
@@ -174,7 +174,7 @@ export function generateVideoSchema(options: VideoSchemaOptions): Record<string,
     });
   }
 
-  // Add potential action (watch video)
+  // Add potential action
   schema['potentialAction'] = {
     '@type': 'WatchAction',
     'target': options.url
@@ -228,17 +228,17 @@ export function getLicenseUrl(license: string): string {
 }
 
 /**
- * Inject JSON-LD script into document head (Enhanced version)
+ * Inject JSON-LD script into document head
  */
 export function injectJsonLd(schema: Record<string, any>) {
   // Check if we're in browser environment
   if (typeof document === 'undefined') return;
 
-  // Create a unique ID based on content URL to avoid duplicates
+  // Create a unique ID based on content URL
   const url = schema.contentUrl || schema.url || '';
   const schemaId = `rmo-schema-${hashCode(url).toString(36)}`;
   
-  // Remove existing script with same ID if any
+  // Remove existing script with same ID
   const existingScript = document.getElementById(schemaId);
   if (existingScript) {
     existingScript.remove();
@@ -248,7 +248,7 @@ export function injectJsonLd(schema: Record<string, any>) {
   const script = document.createElement('script');
   script.id = schemaId;
   script.type = 'application/ld+json';
-  script.textContent = JSON.stringify(schema, null, 2); // Pretty print for debugging
+  script.textContent = JSON.stringify(schema, null, 2);
   
   // Inject into head
   document.head.appendChild(script);
@@ -267,7 +267,7 @@ function hashCode(str: string): number {
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    hash = hash & hash;
   }
   return Math.abs(hash);
 }

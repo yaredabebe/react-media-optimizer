@@ -23,7 +23,21 @@ export type {
   SEOProps,
   PriorityProps,
   LicenseType,
-  PriorityType 
+  PriorityType,
+  VideoChapter  // Add this if you have it
 } from './types';
 
-export { generateImageSchema } from './seo/schemaGenerator';
+// FIXED: Export both schema generators
+export { 
+  generateImageSchema,
+  generateVideoSchema,  // <-- ADD THIS!
+  injectJsonLd,
+  getLicenseUrl 
+} from './seo/schemaGenerator';
+
+// Add preload exports if you have them
+export { 
+  injectPreload,
+  preloadCritical,
+  getRepresentativeFlag 
+} from './seo/preloadInjector';

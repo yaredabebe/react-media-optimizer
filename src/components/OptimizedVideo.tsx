@@ -3,34 +3,35 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLazyLoad } from '../hooks/useLazyLoad';
 import { generateVideoSchema, injectJsonLd } from '../seo/schemaGenerator';
 import { injectPreload } from '../seo/preloadInjector';
-
+import { VideoChapter, PriorityType, LicenseType } from '../types';
 
 declare module 'react' {
   interface VideoHTMLAttributes<T> {
     fetchPriority?: 'high' | 'low' | 'auto';
   }
 }
+
 // Types for SEO features
-export type LicenseType = 
-  | 'CC0'
-  | 'CC BY'
-  | 'CC BY-SA'
-  | 'CC BY-NC'
-  | 'CC BY-ND'
-  | 'CC BY-NC-SA'
-  | 'CC BY-NC-ND'
-  | 'Royalty Free'
-  | 'Commercial'
-  | 'Public Domain'
-  | string;
+// export type LicenseType = 
+//   | 'CC0'
+//   | 'CC BY'
+//   | 'CC BY-SA'
+//   | 'CC BY-NC'
+//   | 'CC BY-ND'
+//   | 'CC BY-NC-SA'
+//   | 'CC BY-NC-ND'
+//   | 'Royalty Free'
+//   | 'Commercial'
+//   | 'Public Domain'
+//   | string;
 
-export type PriorityType = 'hero' | 'critical' | 'lazy' | false;
+//export type PriorityType = 'hero' | 'critical' | 'lazy' | false;
 
-export interface VideoChapter {
-  startTime: number; // seconds
-  title: string;
-  thumbnail?: string;
-}
+// export interface VideoChapter {
+//   startTime: number; // seconds
+//   title: string;
+//   thumbnail?: string;
+// }
 
 interface SEOProps {
   /** License type for the video (helps with licensing badges) */
@@ -116,12 +117,11 @@ export const OptimizedVideo: React.FC<OptimizedVideoProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [showPlaceholder, setShowPlaceholder] = useState(true);
   
-  const { isVisible, elementRef } = useLazyLoad<HTMLVideoElement>({
+  // FIXED: Use elementRef from useLazyLoad for the wrapper div
+  const { isVisible, elementRef } = useLazyLoad<HTMLDivElement>({
     enabled: lazy && !priority, // Don't lazy load priority videos
   });
 
-
-  
   const resolvedMuted = autoPlay ? true : muted;
 
   // Build video sources with format fallbacks
@@ -172,7 +172,10 @@ export const OptimizedVideo: React.FC<OptimizedVideoProps> = ({
   };
 
   const shouldLoadVideo = !lazy || isVisible || priority;
+
+  // FIXED: Move placeholderRef declaration BEFORE it's used
   const placeholderRef = useRef<HTMLDivElement>(null);
+  
   // Placeholder (lazy)
   if (lazy && !shouldLoadVideo) {
     return (
@@ -197,7 +200,7 @@ export const OptimizedVideo: React.FC<OptimizedVideoProps> = ({
 
   return (
     <div
-      ref={placeholderRef}
+      ref={elementRef}  // FIXED: Use elementRef from useLazyLoad here
       className="media-optimizer-video-wrapper"
       style={{
         position: 'relative',

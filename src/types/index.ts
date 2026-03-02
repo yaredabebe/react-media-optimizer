@@ -1,3 +1,5 @@
+// src/types/index.ts
+
 // SEO Types for v1.1.0
 export type LicenseType = 
   | 'CC0'
@@ -13,6 +15,18 @@ export type LicenseType =
   | string;
 
 export type PriorityType = 'hero' | 'critical' | 'lazy' | false;
+
+// NEW: Video Chapter Interface
+export interface VideoChapter {
+  /** Start time in seconds */
+  startTime: number;
+  
+  /** Chapter title */
+  title: string;
+  
+  /** Optional thumbnail for the chapter */
+  thumbnail?: string;
+}
 
 export interface SEOProps {
   /** License type for the image (gets "Licensable" badge in Google) */
@@ -64,6 +78,46 @@ export interface OptimizedImageProps extends SEOProps, PriorityProps {
   blurIntensity?: number;
   className?: string;
   style?: React.CSSProperties;
+  onLoad?: () => void;
+  onError?: () => void;
+}
+
+// NEW: Video SEO Props (if you want to add them here too)
+export interface VideoSEOProps {
+  /** Video title */
+  title?: string;
+  
+  /** Video description */
+  description?: string;
+  
+  /** Video chapters for Key Moments */
+  chapters?: VideoChapter[];
+  
+  /** Video duration in seconds */
+  duration?: number;
+  
+  /** Upload date (ISO string) */
+  uploadDate?: string;
+  
+  /** Video transcript */
+  transcript?: string;
+}
+
+// Extended props for OptimizedVideo
+export interface OptimizedVideoProps extends VideoSEOProps, PriorityProps {
+  src: string;
+  poster?: string;
+  lazy?: boolean;
+  webm?: boolean;
+  mp4?: boolean;
+  disableSEO?: boolean;
+  showChapters?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+  controls?: boolean;
+  autoPlay?: boolean;
+  muted?: boolean;
+  loop?: boolean;
   onLoad?: () => void;
   onError?: () => void;
 }
