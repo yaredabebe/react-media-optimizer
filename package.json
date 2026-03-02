@@ -1,7 +1,7 @@
 {
   "name": "react-media-optimizer",
-  "version": "1.1.0",
-  "description": "Drop-in React component for auto-optimized images & media with lazy loading, WebP conversion, and performance optimization",
+  "version": "1.1.1",
+  "description": "Drop-in React component for auto-optimized images & media with lazy loading, WebP conversion, SEO metadata, and performance optimization",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -26,25 +26,34 @@
     "test": "vitest",
     "lint": "eslint src --ext ts,tsx"
   },
-  "keywords": [
+   "keywords": [
     "react",
     "image",
+    "video",
     "optimization",
     "performance",
     "lazy-load",
     "webp",
     "media",
-    "video",
     "compression",
     "seo",
     "web-vitals",
     "nextjs",
-    "gatsby"
+    "gatsby",
+    "schema",
+    "json-ld",
+    "key-moments",
+    "video-chapters"
   ],
   "peerDependencies": {
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0"
   },
+ 
+  "dependencies": {
+  "intersection-observer": "^0.12.2", 
+  "browser-image-compression": "^2.0.2" 
+},
   "author": "yared abebe",
   "license": "MIT",
   "repository": {
