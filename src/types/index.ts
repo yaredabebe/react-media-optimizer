@@ -1,6 +1,7 @@
 // src/types/index.ts
 
-// SEO Types for v1.1.0
+
+
 export type LicenseType = 
   | 'CC0'
   | 'CC BY'
@@ -120,4 +121,158 @@ export interface OptimizedVideoProps extends VideoSEOProps, PriorityProps {
   loop?: boolean;
   onLoad?: () => void;
   onError?: () => void;
+}
+
+// v1.2.0 AI Types
+// ============================================
+
+export type SmartCropMode = 'face' | 'subject' | 'auto' | 'center' | false;
+export type PortraitPreset = 'natural' | 'professional' | 'dramatic';
+export type AIModelType = 'face-detection' | 'image-captioning' | 'portrait-enhancement';
+export type AIProcessingStatus = 'idle' | 'loading' | 'processing' | 'success' | 'error';
+
+export interface CropCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  confidence: number;
+}
+
+export interface FaceDetection {
+  boundingBox: CropCoordinates;
+  landmarks?: Array<{x: number, y: number}>;
+  confidence: number;
+}
+
+export interface AIDetection {
+  type: 'face' | 'subject' | 'text';
+  boundingBox: CropCoordinates;
+  confidence: number;
+  metadata?: Record<string, any>;
+}
+
+export interface AIProps {
+  /** Auto-detect and crop to subject/face */
+  smartCrop?: SmartCropMode;
+  
+  /** Auto-generate alt text using AI */
+  autoAlt?: boolean;
+  
+  /** Context for better alt text generation */
+  altContext?: string;
+  
+  /** Auto-enhance portraits */
+  enhancePortrait?: boolean;
+  
+  /** Portrait enhancement preset */
+  portraitPreset?: PortraitPreset;
+  
+  /** Minimum confidence for AI detection (0-1) */
+  confidenceThreshold?: number;
+  
+  /** Enable AI features (default: true) */
+  enableAI?: boolean;
+  
+  /** Maximum time to wait for AI processing (ms) */
+  aiTimeout?: number;
+  
+  /** Cache AI results in localStorage */
+  aiCache?: boolean;
+  
+  /** Callback when AI processing starts */
+  onAIStart?: () => void;
+  
+  /** Callback when AI processing completes */
+  onAIComplete?: (result: AIProcessingResult) => void;
+  
+  /** Callback when AI encounters an error */
+  onAIError?: (error: Error) => void;
+}
+
+export interface AIProcessingResult {
+  type: AIModelType;
+  success: boolean;
+  processingTime: number;
+  detections?: AIDetection[];
+  generatedAlt?: string;
+  confidence: number;
+  error?: string;
+}
+
+export interface AIModelInfo {
+  type: AIModelType;
+  loaded: boolean;
+  loading: boolean;
+  error?: Error;
+  modelSize?: number; // bytes
+  processingTime?: number; // ms average
+}
+
+export interface AIConfig {
+  enabled: boolean;
+  autoLoadModels?: boolean;
+  maxModelCacheSize?: number; // MB
+  processingTimeout?: number; // ms
+  fallbackToCenterCrop?: boolean;
+  debug?: boolean;
+}
+
+// ============================================
+// Utility Types
+// ============================================
+
+export interface Dimensions {
+  width: number;
+  height: number;
+  aspectRatio: number;
+}
+
+export interface ProcessingOptions {
+  quality?: number;
+  format?: 'webp' | 'jpeg' | 'png' | 'original';
+  maxWidth?: number;
+  maxHeight?: number;
+  crop?: CropCoordinates;
+}
+
+export interface CompressionResult {
+  originalSize: number;
+  compressedSize: number;
+  reduction: string;
+  blob: Blob;
+  url: string;
+}
+
+// ============================================
+// Event Types
+// ============================================
+
+export interface ImageLoadEvent {
+  naturalWidth: number;
+  naturalHeight: number;
+  src: string;
+  processingTime: number;
+}
+
+export interface VideoLoadEvent {
+  duration: number;
+  videoWidth: number;
+  videoHeight: number;
+  src: string;
+  processingTime: number;
+}
+
+// ============================================
+// Configuration
+// ============================================
+
+export interface GlobalConfig {
+  defaultQuality?: number;
+  defaultWebP?: boolean;
+  defaultLazy?: boolean;
+  defaultPlaceholder?: 'blur' | 'none';
+  defaultBlurIntensity?: number;
+  enableAIGlobally?: boolean;
+  debug?: boolean;
 }

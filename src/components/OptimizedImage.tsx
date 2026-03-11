@@ -1,10 +1,17 @@
 // components/OptimizedImage.tsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useOptimizedImage } from '../hooks/useOptimizedImage';
+import { useAIDetection } from '../hooks/useAIDetection';
 import { generateImageSchema, injectJsonLd } from '../seo/schemaGenerator';
 import { injectPreload, getRepresentativeFlag } from '../seo/preloadInjector';
 
-// Types for SEO features
+// AI Imports (these were missing!)
+import { detectFaces } from '../ai/faceDetection';
+import { generateCaption } from '../ai/imageCaptioning';
+import { calculateSmartCrop, getCropCSS, CropResult } from '../ai/cropCalculator';
+import { modelManager } from '../ai/models';
+
+// Types for SEO features (keeping your existing types)
 export type LicenseType = 
   | 'CC0'
   | 'CC BY'
@@ -20,57 +27,71 @@ export type LicenseType =
 
 export type PriorityType = 'hero' | 'critical' | 'lazy' | false;
 
+// NEW: AI Types for v1.2.0
+export type SmartCropMode = 'face' | 'subject' | 'auto' | 'center' | false;
+export type PortraitPreset = 'natural' | 'professional' | 'dramatic';
+
 interface SEOProps {
-  /** License type for the image (gets "Licensable" badge in Google) */
   license?: LicenseType;
-  
-  /** Author/creator name (improves E-E-AT) */
   author?: string;
-  
-  /** Photographer credit */
   credit?: string;
-  
-  /** Image caption for schema */
   caption?: string;
-  
-  /** Whether content is family friendly */
   isFamilyFriendly?: boolean;
-  
-  /** Keywords for better indexing */
   keywords?: string[];
-  
-  /** Location where photo was taken */
   contentLocation?: string;
-  
-  /** Copyright holder */
   copyrightHolder?: string;
-  
-  /** Publication date (ISO string) */
   datePublished?: string;
 }
 
 interface PriorityProps {
-  /** Priority level - hero images get preload + representativeOfPage */
   priority?: PriorityType;
-  
-  /** Browser fetch priority hint */
   fetchPriority?: 'high' | 'low' | 'auto';
+}
+
+// NEW: AI Props for v1.2.0
+interface AIProps {
+  /** Auto-detect and crop to subject/face */
+  smartCrop?: SmartCropMode;
+  
+  /** Auto-generate alt text using AI */
+  autoAlt?: boolean;
+  
+  /** Context for better alt text generation */
+  altContext?: string;
+  
+  /** Minimum confidence for AI detection (0-1) */
+  confidenceThreshold?: number;
+  
+  /** Enable AI features (default: true) */
+  enableAI?: boolean;
+  
+  /** Callback when AI processing starts */
+  onAIStart?: () => void;
+  
+  /** Callback when AI processing completes */
+  onAIComplete?: (result: any) => void;
+  
+  /** Callback when AI encounters an error */
+  onAIError?: (error: Error) => void;
+  
+  /** Show AI processing indicator */
+  showAIStatus?: boolean;
 }
 
 interface OptimizedImageProps
   extends React.ImgHTMLAttributes<HTMLImageElement>,
     SEOProps,
-    PriorityProps {
+    PriorityProps,
+    AIProps {  // Added AIProps
   src: string;
   lazy?: boolean;
   webp?: boolean;
   quality?: number;
-  placeholderSrc?: string; // legacy support
+  placeholderSrc?: string;
   placeholder?: 'blur' | 'none';
   blurIntensity?: number;
   fallbackSrc?: string;
   showLoadingIndicator?: boolean;
-  /** Disable SEO features if needed */
   disableSEO?: boolean;
 }
 
@@ -89,7 +110,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   onLoad,
   onError,
   
-  // New SEO props
+  // SEO props
   license,
   author,
   credit,
@@ -103,9 +124,26 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   fetchPriority = 'auto',
   disableSEO = false,
   
+  // NEW AI props
+  smartCrop = false,
+  autoAlt = false,
+  altContext,
+  confidenceThreshold = 0.5,
+  enableAI = true,
+  onAIStart,
+  onAIComplete,
+  onAIError,
+  showAIStatus = true,
+  
   ...imgProps
 }) => {
   const schemaInjected = useRef(false);
+  const [aiProcessedSrc, setAiProcessedSrc] = useState<string | null>(null);
+  const [aiAlt, setAiAlt] = useState<string | null>(null);
+  const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'processing' | 'success' | 'error'>('idle');
+  const [aiDetections, setAiDetections] = useState<any[]>([]);
+  const [cropResult, setCropResult] = useState<CropResult | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   
   const {
     src: optimizedSrc,
@@ -113,19 +151,126 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     error,
     elementRef,
   } = useOptimizedImage({
-    src,
+    src: aiProcessedSrc || src, // Use AI processed src if available
     lazy,
     webp,
     quality,
     fallbackSrc,
   });
 
-  const resolvedAlt =
-    alt ||
-    src.split('/').pop()?.replace(/[-_]/g, ' ') ||
-    'image';
+  // Use AI detection hook
+  const { 
+    isLoading: aiLoading, 
+    detections, 
+    optimalCrop,
+    error: aiError 
+  } = useAIDetection(src, {
+    smartCrop: smartCrop as any,
+    confidenceThreshold,
+    enableAI: enableAI && (smartCrop !== false)
+  });
 
+  const resolvedAlt = alt || aiAlt || src.split('/').pop()?.replace(/[-_]/g, ' ') || 'image';
   const showBlur = placeholder === 'blur';
+
+  // Preload AI models if AI is enabled
+  useEffect(() => {
+    if (enableAI) {
+      const preloadAIModels = async () => {
+        try {
+          setAiStatus('loading');
+          
+          // Preload face detection model if smart crop is enabled
+          if (smartCrop) {
+            await modelManager.loadModel('face-short');
+          }
+          
+          // Preload captioning model if auto alt is enabled
+          if (autoAlt) {
+            await modelManager.loadModel('caption-encoder');
+            await modelManager.loadModel('caption-decoder');
+          }
+          
+          setAiStatus('idle');
+        } catch (error) {
+          console.error('Failed to preload AI models:', error);
+          setAiStatus('error');
+        }
+      };
+      
+      preloadAIModels();
+    }
+  }, [enableAI, smartCrop, autoAlt]);
+
+  // Handle AI detections and cropping
+  useEffect(() => {
+    if (!enableAI) return;
+
+    const processAI = async () => {
+      try {
+        setAiStatus('processing');
+        onAIStart?.();
+
+        const results: any = {};
+
+        // 1. Face/Subject Detection for Smart Crop
+        if (smartCrop && detections.length > 0 && imgProps.width && imgProps.height) {
+          const img = new Image();
+          img.src = src;
+          await new Promise((resolve) => { img.onload = resolve; });
+
+          const crop = calculateSmartCrop(
+            img.naturalWidth,
+            img.naturalHeight,
+            detections,
+            smartCrop === 'center' ? 'auto' : smartCrop,
+            {
+              targetWidth: Number(imgProps.width),
+              targetHeight: Number(imgProps.height),
+              padding: 0.1,
+              minConfidence: confidenceThreshold
+            }
+          );
+          
+          setCropResult(crop);
+          results.crop = crop;
+          
+          // Apply crop via CSS or CDN
+          if (crop.strategyUsed !== 'center') {
+            // For now, we'll use CSS object-position
+            // In production, you might want to use a CDN that supports cropping
+            setAiStatus('success');
+          }
+        }
+
+        // 2. Auto Alt Text Generation
+        if (autoAlt && !alt) {
+          const captionResult = await generateCaption(src, {
+            context: altContext,
+            minConfidence: confidenceThreshold
+          });
+          
+          if (captionResult.text && captionResult.confidence >= (confidenceThreshold || 0.3)) {
+            setAiAlt(captionResult.text);
+            results.alt = captionResult;
+          }
+        }
+
+        setAiDetections(detections);
+        onAIComplete?.(results);
+        setAiStatus('success');
+
+      } catch (error) {
+        setAiStatus('error');
+        onAIError?.(error as Error);
+        console.error('AI processing failed:', error);
+      }
+    };
+
+    if ((smartCrop && detections.length > 0) || (autoAlt && !alt)) {
+      processAI();
+    }
+  }, [src, smartCrop, autoAlt, detections, alt, altContext, confidenceThreshold, enableAI]);
 
   // Inject preload for hero/critical images
   useEffect(() => {
@@ -167,11 +312,31 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       isFamilyFriendly, keywords, contentLocation, copyrightHolder, datePublished, 
       priority, imgProps.width, imgProps.height]);
 
+  // Calculate CSS for smart crop
+  const cropStyle = useCallback(() => {
+    if (!cropResult || !imageRef.current) return {};
+    
+    const img = imageRef.current;
+    return getCropCSS(cropResult, img.naturalWidth, img.naturalHeight);
+  }, [cropResult]);
+
+  // Ref handler to combine multiple refs
+  // Ref handler to combine multiple refs
+const setRefs = useCallback((el: HTMLImageElement | null) => {
+  // Handle elementRef - assume it's a RefObject
+  if (elementRef && 'current' in elementRef) {
+    (elementRef as React.MutableRefObject<HTMLImageElement | null>).current = el;
+  }
+  
+  // Handle imageRef
+  imageRef.current = el;
+}, [elementRef]);
+
   /* ---------------- Error fallback ---------------- */
   if (error && fallbackSrc) {
     return (
       <img
-        ref={elementRef}
+        ref={setRefs}
         src={fallbackSrc}
         alt={`Fallback for ${resolvedAlt}`}
         className={`${className} media-optimizer-error`}
@@ -184,16 +349,46 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     );
   }
 
-  /* ---------------- Layered Rendering with SEO Attributes ---------------- */
+  /* ---------------- Layered Rendering with AI Features ---------------- */
   return (
     <div
       className="media-optimizer-wrapper"
       style={{ position: 'relative', overflow: 'hidden' }}
-      // Add SEO attributes for better indexing
       itemScope
       itemType="https://schema.org/ImageObject"
     >
-      {/* Blur Layer (Auto Blur) */}
+      {/* AI Status Indicator */}
+      {showAIStatus && enableAI && aiStatus !== 'idle' && aiStatus !== 'success' && (
+        <div className={`media-optimizer-ai-status ${aiStatus}`}>
+          {aiStatus === 'loading' && '🔄 Loading AI...'}
+          {aiStatus === 'processing' && '🤖 AI Processing...'}
+          {aiStatus === 'error' && '⚠️ AI Error'}
+        </div>
+      )}
+
+      {/* Detection Visualization (optional - for debugging) */}
+      {process.env.NODE_ENV === 'development' && aiDetections.length > 0 && (
+        <div className="media-optimizer-detections">
+          {aiDetections.map((detection, index) => (
+            <div
+              key={index}
+              className="detection-box"
+              style={{
+                position: 'absolute',
+                left: `${detection.boundingBox.x * 100}%`,
+                top: `${detection.boundingBox.y * 100}%`,
+                width: `${detection.boundingBox.width * 100}%`,
+                height: `${detection.boundingBox.height * 100}%`,
+                border: '2px solid #00ff00',
+                pointerEvents: 'none',
+                zIndex: 10
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Blur Layer */}
       {showBlur && (
         <img
           src={optimizedSrc}
@@ -207,7 +402,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         />
       )}
 
-      {/* Legacy Placeholder Support */}
+      {/* Legacy Placeholder */}
       {isLoading && placeholderSrc && (
         <img
           src={placeholderSrc}
@@ -218,15 +413,16 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       )}
 
       {/* Loading Indicator */}
-      {showLoadingIndicator && isLoading && !placeholderSrc && (
+      {showLoadingIndicator && (isLoading || aiStatus === 'processing') && !placeholderSrc && (
         <div className="media-optimizer-loader">
           <div className="spinner" />
+          {aiStatus === 'processing' && <span className="loader-text">AI</span>}
         </div>
       )}
 
-      {/* Final Optimized Image with SEO meta tags */}
+      {/* Final Optimized Image with AI Crop */}
       <img
-        ref={elementRef}
+        ref={setRefs}
         src={optimizedSrc}
         alt={resolvedAlt}
         className={`media-optimizer-final-layer ${
@@ -235,9 +431,23 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         loading={lazy ? 'lazy' : 'eager'}
         fetchPriority={fetchPriority}
         decoding="async"
-        onLoad={onLoad}
+        onLoad={(e) => {
+          // Apply crop style after load
+          if (cropResult) {
+            const img = e.currentTarget;
+            const style = cropStyle();
+            
+            // Apply object-position for smart crop
+            if (style.objectPosition) {
+              img.style.objectPosition = style.objectPosition as string;
+            }
+            if (style.objectFit) {
+              img.style.objectFit = style.objectFit as string;
+            }
+          }
+          onLoad?.(e);
+        }}
         onError={onError}
-        // SEO attributes
         itemProp="contentUrl"
         {...imgProps}
       />
@@ -249,6 +459,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           {author && <meta itemProp="author" content={author} />}
           {credit && <meta itemProp="creditText" content={credit} />}
           {caption && <meta itemProp="caption" content={caption} />}
+          {aiAlt && !caption && <meta itemProp="caption" content={aiAlt} />}
           {keywords && keywords.length > 0 && (
             <meta itemProp="keywords" content={keywords.join(', ')} />
           )}
@@ -267,13 +478,16 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           {imgProps.height && (
             <meta itemProp="height" content={String(imgProps.height)} />
           )}
+          {cropResult && (
+            <meta itemProp="cropStrategy" content={cropResult.strategyUsed} />
+          )}
         </div>
       )}
     </div>
   );
 };
 
-/* ---------------- Enhanced Styles ---------------- */
+/* ---------------- Updated Styles ---------------- */
 export const OptimizedImageStyles = `
 .media-optimizer-wrapper {
   display: inline-block;
@@ -285,7 +499,7 @@ export const OptimizedImageStyles = `
   width: 100%;
   height: auto;
   display: block;
-  transition: opacity 300ms ease;
+  transition: opacity 300ms ease, object-position 300ms ease;
 }
 
 .media-optimizer-blur-layer,
@@ -319,6 +533,10 @@ export const OptimizedImageStyles = `
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .spinner {
@@ -330,8 +548,56 @@ export const OptimizedImageStyles = `
   animation: spin 1s ease-in-out infinite;
 }
 
+.loader-text {
+  color: #667eea;
+  font-size: 12px;
+  font-weight: bold;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* AI Status Indicator */
+.media-optimizer-ai-status {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 20;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  backdrop-filter: blur(4px);
+}
+
+.media-optimizer-ai-status.processing {
+  background: rgba(102, 126, 234, 0.9);
+  animation: pulse 2s infinite;
+}
+
+.media-optimizer-ai-status.error {
+  background: rgba(244, 67, 54, 0.9);
+}
+
+.media-optimizer-ai-status.success {
+  background: rgba(76, 175, 80, 0.9);
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* Detection Boxes (dev mode) */
+.media-optimizer-detections {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
 }
 
 /* Error State */
