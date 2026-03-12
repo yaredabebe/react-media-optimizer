@@ -5,13 +5,13 @@ import { useAIDetection } from '../hooks/useAIDetection';
 import { generateImageSchema, injectJsonLd } from '../seo/schemaGenerator';
 import { injectPreload, getRepresentativeFlag } from '../seo/preloadInjector';
 
-// AI Imports (these were missing!)
+// AI Imports
 import { detectFaces } from '../ai/faceDetection';
 import { generateCaption } from '../ai/imageCaptioning';
 import { calculateSmartCrop, getCropCSS, CropResult } from '../ai/cropCalculator';
 import { modelManager } from '../ai/models';
 
-// Types for SEO features (keeping your existing types)
+// Types for SEO features
 export type LicenseType = 
   | 'CC0'
   | 'CC BY'
@@ -27,7 +27,7 @@ export type LicenseType =
 
 export type PriorityType = 'hero' | 'critical' | 'lazy' | false;
 
-// NEW: AI Types for v1.2.0
+// AI Types for v1.2.0
 export type SmartCropMode = 'face' | 'subject' | 'auto' | 'center' | false;
 export type PortraitPreset = 'natural' | 'professional' | 'dramatic';
 
@@ -48,7 +48,7 @@ interface PriorityProps {
   fetchPriority?: 'high' | 'low' | 'auto';
 }
 
-// NEW: AI Props for v1.2.0
+// AI Props for v1.2.0
 interface AIProps {
   /** Auto-detect and crop to subject/face */
   smartCrop?: SmartCropMode;
@@ -82,7 +82,7 @@ interface OptimizedImageProps
   extends React.ImgHTMLAttributes<HTMLImageElement>,
     SEOProps,
     PriorityProps,
-    AIProps {  // Added AIProps
+    AIProps {
   src: string;
   lazy?: boolean;
   webp?: boolean;
@@ -124,7 +124,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   fetchPriority = 'auto',
   disableSEO = false,
   
-  // NEW AI props
+  // AI props
   smartCrop = false,
   autoAlt = false,
   altContext,
@@ -143,6 +143,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'processing' | 'success' | 'error'>('idle');
   const [aiDetections, setAiDetections] = useState<any[]>([]);
   const [cropResult, setCropResult] = useState<CropResult | null>(null);
+  const [faceDetectionResult, setFaceDetectionResult] = useState<any>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   
   const {
@@ -151,7 +152,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     error,
     elementRef,
   } = useOptimizedImage({
-    src: aiProcessedSrc || src, // Use AI processed src if available
+    src: aiProcessedSrc || src,
     lazy,
     webp,
     quality,
@@ -169,23 +170,67 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     confidenceThreshold,
     enableAI: enableAI && (smartCrop !== false)
   });
+  
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Helper function to generate cropped image URL
+  const generateCroppedImageUrl = useCallback((originalSrc: string, crop: CropResult): string => {
+    try {
+      const url = new URL(originalSrc, window.location.origin);
+      url.searchParams.append('crop', `${Math.round(crop.x)},${Math.round(crop.y)},${Math.round(crop.width)},${Math.round(crop.height)}`);
+      return url.toString();
+    } catch {
+      return originalSrc;
+    }
+  }, []);
+
+  // Use setAiProcessedSrc when crop is available
+  useEffect(() => {
+    if (cropResult && cropResult.strategyUsed !== 'center' && enableAI) {
+      const croppedUrl = generateCroppedImageUrl(src, cropResult);
+      setAiProcessedSrc(croppedUrl);
+    }
+  }, [cropResult, src, enableAI, generateCroppedImageUrl]);
+
+  // Log AI processed source changes
+  useEffect(() => {
+    if (aiProcessedSrc) {
+      console.debug('AI processed image:', aiProcessedSrc);
+    }
+  }, [aiProcessedSrc]);
+
+  // Update AI status based on loading state
+  useEffect(() => {
+    if (aiLoading) {
+      setAiStatus('loading');
+    }
+  }, [aiLoading]);
+
+  // Handle optimal crop and errors
+  useEffect(() => {
+    if (optimalCrop && smartCrop) {
+      console.debug('Optimal crop found:', optimalCrop);
+    }
+    if (aiError) {
+      console.error('AI detection error:', aiError);
+      onAIError?.(aiError);
+    }
+  }, [optimalCrop, aiError, smartCrop, onAIError]);
 
   const resolvedAlt = alt || aiAlt || src.split('/').pop()?.replace(/[-_]/g, ' ') || 'image';
   const showBlur = placeholder === 'blur';
 
-  // Preload AI models if AI is enabled
+  // Preload AI models
   useEffect(() => {
     if (enableAI) {
       const preloadAIModels = async () => {
         try {
           setAiStatus('loading');
           
-          // Preload face detection model if smart crop is enabled
           if (smartCrop) {
             await modelManager.loadModel('face-short');
           }
           
-          // Preload captioning model if auto alt is enabled
           if (autoAlt) {
             await modelManager.loadModel('caption-encoder');
             await modelManager.loadModel('caption-decoder');
@@ -202,7 +247,31 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     }
   }, [enableAI, smartCrop, autoAlt]);
 
-  // Handle AI detections and cropping
+  // Direct face detection
+  const performFaceDetection = useCallback(async () => {
+    if (!enableAI || !smartCrop || !imageRef.current) return;
+    
+    try {
+      const result = await detectFaces(imageRef.current);
+      setFaceDetectionResult(result);
+      
+      if (result.detections.length > 0) {
+        console.log(`✅ detectFaces found ${result.detections.length} faces`);
+        setAiDetections(result.detections);
+      }
+    } catch (error) {
+      console.error('Face detection failed:', error);
+    }
+  }, [enableAI, smartCrop]);
+
+  // Run face detection on image load
+  useEffect(() => {
+    if (isLoaded && !isLoading) {
+      performFaceDetection();
+    }
+  }, [isLoaded, isLoading, performFaceDetection]);
+
+  // Process AI features
   useEffect(() => {
     if (!enableAI) return;
 
@@ -211,9 +280,11 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         setAiStatus('processing');
         onAIStart?.();
 
-        const results: any = {};
+        const results: any = {
+          faceDetection: faceDetectionResult
+        };
 
-        // 1. Face/Subject Detection for Smart Crop
+        // Smart Crop
         if (smartCrop && detections.length > 0 && imgProps.width && imgProps.height) {
           const img = new Image();
           img.src = src;
@@ -234,16 +305,9 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           
           setCropResult(crop);
           results.crop = crop;
-          
-          // Apply crop via CSS or CDN
-          if (crop.strategyUsed !== 'center') {
-            // For now, we'll use CSS object-position
-            // In production, you might want to use a CDN that supports cropping
-            setAiStatus('success');
-          }
         }
 
-        // 2. Auto Alt Text Generation
+        // Auto Alt Text
         if (autoAlt && !alt) {
           const captionResult = await generateCaption(src, {
             context: altContext,
@@ -270,16 +334,17 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     if ((smartCrop && detections.length > 0) || (autoAlt && !alt)) {
       processAI();
     }
-  }, [src, smartCrop, autoAlt, detections, alt, altContext, confidenceThreshold, enableAI]);
+  }, [src, smartCrop, autoAlt, detections, alt, altContext, confidenceThreshold, 
+      enableAI, onAIStart, onAIComplete, onAIError, imgProps, faceDetectionResult]);
 
-  // Inject preload for hero/critical images
+  // Preload hero images
   useEffect(() => {
     if (priority && optimizedSrc && !disableSEO) {
       injectPreload(optimizedSrc, priority);
     }
   }, [priority, optimizedSrc, disableSEO]);
 
-  // Inject JSON-LD schema for SEO
+  // Inject SEO schema
   useEffect(() => {
     if (!disableSEO && optimizedSrc && !schemaInjected.current) {
       const hasSEOProps = license || author || credit || caption || 
@@ -312,27 +377,22 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       isFamilyFriendly, keywords, contentLocation, copyrightHolder, datePublished, 
       priority, imgProps.width, imgProps.height]);
 
-  // Calculate CSS for smart crop
+  // Calculate crop CSS
   const cropStyle = useCallback(() => {
     if (!cropResult || !imageRef.current) return {};
-    
     const img = imageRef.current;
     return getCropCSS(cropResult, img.naturalWidth, img.naturalHeight);
   }, [cropResult]);
 
-  // Ref handler to combine multiple refs
-  // Ref handler to combine multiple refs
-const setRefs = useCallback((el: HTMLImageElement | null) => {
-  // Handle elementRef - assume it's a RefObject
-  if (elementRef && 'current' in elementRef) {
-    (elementRef as React.MutableRefObject<HTMLImageElement | null>).current = el;
-  }
-  
-  // Handle imageRef
-  imageRef.current = el;
-}, [elementRef]);
+  // Combine refs
+  const setRefs = useCallback((el: HTMLImageElement | null) => {
+    if (elementRef && 'current' in elementRef) {
+      (elementRef as React.MutableRefObject<HTMLImageElement | null>).current = el;
+    }
+    imageRef.current = el;
+  }, [elementRef]);
 
-  /* ---------------- Error fallback ---------------- */
+  // Error fallback
   if (error && fallbackSrc) {
     return (
       <img
@@ -349,7 +409,6 @@ const setRefs = useCallback((el: HTMLImageElement | null) => {
     );
   }
 
-  /* ---------------- Layered Rendering with AI Features ---------------- */
   return (
     <div
       className="media-optimizer-wrapper"
@@ -366,7 +425,14 @@ const setRefs = useCallback((el: HTMLImageElement | null) => {
         </div>
       )}
 
-      {/* Detection Visualization (optional - for debugging) */}
+      {/* Face Detection Count Badge */}
+      {faceDetectionResult?.detections?.length > 0 && (
+        <div className="face-detection-badge">
+          👤 {faceDetectionResult.detections.length} face(s) detected
+        </div>
+      )}
+
+      {/* Detection Visualization (dev mode) */}
       {process.env.NODE_ENV === 'development' && aiDetections.length > 0 && (
         <div className="media-optimizer-detections">
           {aiDetections.map((detection, index) => (
@@ -420,7 +486,7 @@ const setRefs = useCallback((el: HTMLImageElement | null) => {
         </div>
       )}
 
-      {/* Final Optimized Image with AI Crop */}
+      {/* Final Optimized Image */}
       <img
         ref={setRefs}
         src={optimizedSrc}
@@ -432,12 +498,11 @@ const setRefs = useCallback((el: HTMLImageElement | null) => {
         fetchPriority={fetchPriority}
         decoding="async"
         onLoad={(e) => {
-          // Apply crop style after load
+          setIsLoaded(true);
           if (cropResult) {
             const img = e.currentTarget;
             const style = cropStyle();
             
-            // Apply object-position for smart crop
             if (style.objectPosition) {
               img.style.objectPosition = style.objectPosition as string;
             }
@@ -463,31 +528,19 @@ const setRefs = useCallback((el: HTMLImageElement | null) => {
           {keywords && keywords.length > 0 && (
             <meta itemProp="keywords" content={keywords.join(', ')} />
           )}
-          {contentLocation && (
-            <meta itemProp="contentLocation" content={contentLocation} />
-          )}
-          {copyrightHolder && (
-            <meta itemProp="copyrightHolder" content={copyrightHolder} />
-          )}
-          {datePublished && (
-            <meta itemProp="datePublished" content={datePublished} />
-          )}
-          {imgProps.width && (
-            <meta itemProp="width" content={String(imgProps.width)} />
-          )}
-          {imgProps.height && (
-            <meta itemProp="height" content={String(imgProps.height)} />
-          )}
-          {cropResult && (
-            <meta itemProp="cropStrategy" content={cropResult.strategyUsed} />
-          )}
+          {contentLocation && <meta itemProp="contentLocation" content={contentLocation} />}
+          {copyrightHolder && <meta itemProp="copyrightHolder" content={copyrightHolder} />}
+          {datePublished && <meta itemProp="datePublished" content={datePublished} />}
+          {imgProps.width && <meta itemProp="width" content={String(imgProps.width)} />}
+          {imgProps.height && <meta itemProp="height" content={String(imgProps.height)} />}
+          {cropResult && <meta itemProp="cropStrategy" content={cropResult.strategyUsed} />}
         </div>
       )}
     </div>
   );
 };
 
-/* ---------------- Updated Styles ---------------- */
+/* ---------------- Styles ---------------- */
 export const OptimizedImageStyles = `
 .media-optimizer-wrapper {
   display: inline-block;
@@ -584,6 +637,21 @@ export const OptimizedImageStyles = `
 
 .media-optimizer-ai-status.success {
   background: rgba(76, 175, 80, 0.9);
+}
+
+/* Face Detection Badge */
+.face-detection-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(156, 39, 176, 0.9);
+  color: white;
+  backdrop-filter: blur(4px);
 }
 
 @keyframes pulse {

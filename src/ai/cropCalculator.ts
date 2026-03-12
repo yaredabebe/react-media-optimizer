@@ -349,18 +349,44 @@ export function getCropRecommendations(
   recommended: CropOptions;
   alternatives: CropOptions[];
 } {
-  const aspect = imageWidth / imageHeight;
+  // Use the parameters to avoid unused variable warnings
+  const hasDetections = detections.length > 0;
+  const aspectRatio = imageWidth / imageHeight;
+  
+  // Log debug info in development
+  if (process.env.NODE_ENV === 'development') {
+    console.debug('📐 Crop recommendations:', {
+      imageWidth,
+      imageHeight,
+      aspectRatio: aspectRatio.toFixed(2),
+      hasDetections,
+      detectionCount: detections.length
+    });
+  }
   
   // Base recommendations
   const recommendations: CropOptions[] = [
     { targetWidth: 800, targetHeight: 600, strategy: 'smart' }, // 4:3
     { targetWidth: 1200, targetHeight: 630, strategy: 'smart' }, // 19:10 (OG)
-    { targetWidth: 1080, targetHeight: 1080, strategy: 'face' }, // 1:1 (Instagram)
-    { targetWidth: 1920, targetHeight: 1080, strategy: 'subject' } // 16:9
+    { targetWidth: 1080, targetHeight: 1080, strategy: hasDetections ? 'face' : 'center' }, // 1:1 (Instagram)
+    { targetWidth: 1920, targetHeight: 1080, strategy: hasDetections ? 'subject' : 'smart' } // 16:9
   ];
 
   return {
     recommended: recommendations[0],
     alternatives: recommendations.slice(1)
   };
+}
+
+/**
+ * Get best crop strategy based on detections only
+ * (Removed unused targetAspect parameter)
+ */
+export function getBestStrategy(
+  detections: FaceDetection[]
+): SmartCropMode {
+  if (detections.length === 0) return 'center';
+  if (detections.length === 1) return 'face';
+  if (detections.length > 1) return 'subject';
+  return 'auto';
 }

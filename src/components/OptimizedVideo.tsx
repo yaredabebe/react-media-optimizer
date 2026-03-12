@@ -1,5 +1,5 @@
 // src/components/OptimizedVideo.tsx
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react'; // Removed useCallback
 import { useLazyLoad } from '../hooks/useLazyLoad';
 import { generateVideoSchema, injectJsonLd } from '../seo/schemaGenerator';
 import { injectPreload } from '../seo/preloadInjector';
@@ -133,6 +133,7 @@ export const OptimizedVideo: React.FC<OptimizedVideoProps> = ({
   const [aiGeneratedDescription, setAiGeneratedDescription] = useState<string | null>(null);
   const [aiGeneratedChapters, setAiGeneratedChapters] = useState<VideoChapter[]>([]);
   const [aiGeneratedTranscript, setAiGeneratedTranscript] = useState<string | null>(null);
+  const [faceDetectionResult, setFaceDetectionResult] = useState<any>(null);
   
   const { isVisible, elementRef } = useLazyLoad<HTMLDivElement>({
     enabled: lazy && !priority,
@@ -178,114 +179,116 @@ export const OptimizedVideo: React.FC<OptimizedVideoProps> = ({
   }, [priority, src, disableSEO]);
 
   // Process AI features
- useEffect(() => {
-  if (!enableAI || !isLoaded || !videoRef.current) return;
+  useEffect(() => {
+    if (!enableAI || !isLoaded || !videoRef.current) return;
 
-  const processAIFeatures = async () => {
-    try {
-      setAiStatus('processing');
-      onAIStart?.();
+    const processAIFeatures = async () => {
+      try {
+        setAiStatus('processing');
+        onAIStart?.();
 
-      const results: any = {};
-      
-      // Store video reference at the start
-      const video = videoRef.current;
-      if (!video) return;
-
-      // 1. Smart Poster Frame (face detection)
-      if (smartPoster && !poster) {
-        // Seek to 25% of video for best frame
-        video.currentTime = (video.duration || 0) * 0.25;
+        const results: any = {};
         
-        await new Promise<void>((resolve) => {
-          const onSeeked = () => {
-            video.removeEventListener('seeked', onSeeked);
-            resolve();
-          };
-          video.addEventListener('seeked', onSeeked);
-        });
+        // Store video reference at the start
+        const video = videoRef.current;
+        if (!video) return;
 
-        // Capture frame to canvas
-        if (canvasRef.current) {
-          const canvas = canvasRef.current;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-            
-            // Detect faces in the frame
-            const imageData = canvas.toDataURL('image/jpeg');
-            const img = new Image();
-            img.src = imageData;
-            
-            await new Promise((resolve) => { img.onload = resolve; });
-            
-            const faceResult = await detectFaces(img);
-            
-            if (faceResult.detections.length > 0) {
-              // Frame has faces, use it as poster
-              setAiGeneratedPoster(imageData);
-              results.poster = 'face-detected';
+        // 1. Smart Poster Frame (face detection)
+        if (smartPoster && !poster) {
+          // Seek to 25% of video for best frame
+          video.currentTime = (video.duration || 0) * 0.25;
+          
+          await new Promise<void>((resolve) => {
+            const onSeeked = () => {
+              video.removeEventListener('seeked', onSeeked);
+              resolve();
+            };
+            video.addEventListener('seeked', onSeeked);
+          });
+
+          // Capture frame to canvas
+          if (canvasRef.current) {
+            const canvas = canvasRef.current;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              ctx.drawImage(video, 0, 0);
+              
+              // Detect faces in the frame
+              const imageData = canvas.toDataURL('image/jpeg');
+              const img = new Image();
+              img.src = imageData;
+              
+              await new Promise((resolve) => { img.onload = resolve; });
+              
+              const faceResult = await detectFaces(img);
+              setFaceDetectionResult(faceResult);
+              
+              if (faceResult.detections.length > 0) {
+                // Frame has faces, use it as poster
+                setAiGeneratedPoster(imageData);
+                results.poster = 'face-detected';
+              }
             }
           }
         }
-      }
 
-      // 2. Auto Description Generation
-      if (autoDescription && !description) {
-        // Generate description based on video title or filename
-        const title = videoProps.title || src.split('/').pop() || 'video';
-        const desc = await generateCaption(src, {
-          context: `Video titled: ${title}`,
-          minConfidence: confidenceThreshold
-        });
-        
-        if (desc.text) {
-          setAiGeneratedDescription(desc.text);
-          results.description = desc;
-        }
-      }
-
-      // 3. Auto Chapter Generation
-      if (autoChapters && (!chapters || chapters.length === 0)) {
-        // Simple chapter generation based on duration
-        const vidDuration = duration || video.duration || 300;
-        const chapterCount = autoChaptersCount;
-        const chapterDuration = vidDuration / chapterCount;
-        
-        const newChapters: VideoChapter[] = [];
-        for (let i = 0; i < chapterCount; i++) {
-          newChapters.push({
-            startTime: i * chapterDuration,
-            title: `Chapter ${i + 1}`,
+        // 2. Auto Description Generation
+        if (autoDescription && !description) {
+          // Generate description based on video title or filename
+          const title = videoProps.title || src.split('/').pop() || 'video';
+          const desc = await generateCaption(src, {
+            context: `Video titled: ${title}`,
+            minConfidence: confidenceThreshold
           });
+          
+          if (desc.text) {
+            setAiGeneratedDescription(desc.text);
+            results.description = desc;
+          }
         }
-        
-        setAiGeneratedChapters(newChapters);
-        results.chapters = newChapters;
+
+        // 3. Auto Chapter Generation
+        if (autoChapters && (!chapters || chapters.length === 0)) {
+          // Simple chapter generation based on duration
+          const vidDuration = duration || video.duration || 300;
+          const chapterCount = autoChaptersCount;
+          const chapterDuration = vidDuration / chapterCount;
+          
+          const newChapters: VideoChapter[] = [];
+          for (let i = 0; i < chapterCount; i++) {
+            newChapters.push({
+              startTime: i * chapterDuration,
+              title: `Chapter ${i + 1}`,
+            });
+          }
+          
+          setAiGeneratedChapters(newChapters);
+          results.chapters = newChapters;
+        }
+
+        // 4. Auto Transcript Generation (simplified)
+        if (autoTranscript && !transcript) {
+          setAiGeneratedTranscript('Auto-generated transcript would appear here');
+          results.transcript = 'generated';
+        }
+
+        onAIComplete?.(results);
+        setAiStatus('success');
+
+      } catch (error) {
+        setAiStatus('error');
+        onAIError?.(error as Error);
+        console.error('AI processing failed:', error);
       }
+    };
 
-      // 4. Auto Transcript Generation (simplified)
-      if (autoTranscript && !transcript) {
-        setAiGeneratedTranscript('Auto-generated transcript would appear here');
-        results.transcript = 'generated';
-      }
+    processAIFeatures();
+  }, [isLoaded, enableAI, smartPoster, autoDescription, autoChapters, autoTranscript, 
+      poster, description, chapters, duration, autoChaptersCount, confidenceThreshold,
+      src, videoProps.title, transcript, onAIStart, onAIComplete, onAIError]);
 
-      onAIComplete?.(results);
-      setAiStatus('success');
-
-    } catch (error) {
-      setAiStatus('error');
-      onAIError?.(error as Error);
-      console.error('AI processing failed:', error);
-    }
-  };
-
-  processAIFeatures();
-}, [isLoaded, enableAI, smartPoster, autoDescription, autoChapters, autoTranscript, 
-    poster, description, chapters, duration, autoChaptersCount, confidenceThreshold,
-    src, videoProps.title, transcript]);
   // Inject JSON-LD schema for video SEO
   useEffect(() => {
     if (!disableSEO && src && !schemaInjected.current) {
@@ -372,6 +375,13 @@ export const OptimizedVideo: React.FC<OptimizedVideoProps> = ({
           {aiStatus === 'loading' && '🔄 Loading AI...'}
           {aiStatus === 'processing' && '🤖 AI Processing Video...'}
           {aiStatus === 'error' && '⚠️ AI Error'}
+        </div>
+      )}
+
+      {/* Face Detection Badge */}
+      {faceDetectionResult?.detections?.length > 0 && (
+        <div className="face-detection-badge">
+          👤 {faceDetectionResult.detections.length} face(s) detected
         </div>
       )}
 
@@ -697,7 +707,8 @@ export const OptimizedVideoStyles = `
   background: rgba(76, 175, 80, 0.9);
 }
 
-.ai-generated-badge {
+/* Face Detection Badge */
+.face-detection-badge {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -707,6 +718,20 @@ export const OptimizedVideoStyles = `
   font-size: 11px;
   font-weight: 500;
   background: rgba(156, 39, 176, 0.9);
+  color: white;
+  backdrop-filter: blur(4px);
+}
+
+.ai-generated-badge {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  z-index: 20;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(255, 152, 0, 0.9);
   color: white;
   backdrop-filter: blur(4px);
 }

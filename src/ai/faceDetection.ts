@@ -226,14 +226,17 @@ export async function detectFacesContinuous(
       })) : undefined
     })) || [];
 
-    // Calculate FPS
+    // Calculate FPS for performance monitoring
     frameCount++;
     const now = Date.now();
     fps.push(now);
     if (fps.length > 30) fps.shift();
     
-    const avgFps = fps.length > 1 ? 
-      (fps.length * 1000) / (fps[fps.length - 1] - fps[0]) : 0;
+    // Calculate and optionally log FPS every 30 frames
+    if (frameCount % 30 === 0 && fps.length > 1) {
+      const avgFps = (fps.length * 1000) / (fps[fps.length - 1] - fps[0]);
+      console.debug(`📹 Face detection FPS: ${avgFps.toFixed(1)}`);
+    }
 
     onFrame(detections);
   };
@@ -334,9 +337,3 @@ export function setFaceDetectionConfig(config: FaceDetectionConfig): void {
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', resetFaceDetection);
 }
-
-// Add to src/ai/faceDetection.ts
-
-/**
- * Reset face detection (cleanup)
- */
