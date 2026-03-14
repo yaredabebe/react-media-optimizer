@@ -12,33 +12,21 @@
 *Results vary depending on implementation and infrastructure.*
 
 ---
-
+```markdown
 ## ✨ Why Choose React Media Optimizer?
-
-  
-
 | Feature | Benefit | Impact |
-
 |---------|---------|--------|
-
 | **Auto Lazy Loading** | Images/videos load only when visible | ⬇️ 50-80% initial page weight |
-
 | **Auto Blur Placeholders** | Smooth fade-in from blurred preview to sharp image | ⬆️ Better perceived load speed |
-
 | **WebP/WebM Conversion** | Modern formats with better compression | ⬇️ 25-35% smaller file sizes |
-
 | **Client-side Compression** | Reduce upload sizes before server | ⬇️ 60-80% upload bandwidth |
-
 | **SSR/SSG Safe** | Works with Next.js, Gatsby, Remix | ✅ Zero hydration errors |
-
 | **SEO Metadata** | Automatic JSON-LD schema injection | ⬆️ +25% Google Image CTR |
-
 | **🤖 AI Smart Crop** | Auto-detect and center on faces/subjects | 🎯 Perfect crops every time |
-
 | **🧠 Auto Alt Text** | AI-generated accessibility descriptions | ♿ WCAG compliant automatically |
 
   
-  
+  ```
 
 ---
 
@@ -56,7 +44,7 @@
 
 -  **Preload Priority** - Automatic preload for LCP optimization
 
-### 🎬 **New SEO Features for Videos:**
+### 🎬 ** SEO Features for Videos:**
 
 -  **Key Moments (Video Chapters)** - Google shows clickable chapters in search
 
@@ -82,7 +70,7 @@
 
   
 
-### 🎬 **New AI Features for Videos:**
+### 🎬 ** AI Features for Videos:**
 
 -  **🎨 Smart Poster Frame** - Auto-selects best video thumbnail with faces
 
